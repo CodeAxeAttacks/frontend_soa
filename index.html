@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Organization Management System</h1>
+        <p class="subtitle">Управление организациями через микросервисы</p>
+    </header>
+
+    <!-- Навигация -->
+    <nav class="tabs">
+        <button class="tab-button active" onclick="showTab('list')">Список организаций</button>
+        <button class="tab-button" onclick="showTab('create')">Создать</button>
+        <button class="tab-button" onclick="showTab('manage')">Управление</button>
+        <button class="tab-button" onclick="showTab('stats')">Статистика</button>
+    </nav>
+
+    <!-- Уведомления -->
+    <div id="notification" class="notification hidden"></div>
+
+    <!-- Вкладка: Список организаций -->
+    <div id="list-tab" class="tab-content active">
+        <div class="card">
+            <h2>Фильтрация и поиск</h2>
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Название:</label>
+                    <input type="text" id="filter-name" placeholder="Поиск по имени">
+                </div>
+                <div class="filter-group">
+                    <label>Тип:</label>
+                    <select id="filter-type">
+                        <option value="">Все типы</option>
+                        <option value="PUBLIC">PUBLIC</option>
+                        <option value="TRUST">TRUST</option>
+                        <option value="PRIVATE_LIMITED_COMPANY">PRIVATE LIMITED COMPANY</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Мин. сотрудников:</label>
+                    <input type="number" id="filter-employees-min" placeholder="От">
+                </div>
+                <div class="filter-group">
+                    <label>Макс. сотрудников:</label>
+                    <input type="number" id="filter-employees-max" placeholder="До">
+                </div>
+                <button class="btn btn-primary" onclick="loadOrganizations()">🔍 Применить</button>
+                <button class="btn btn-secondary" onclick="clearFilters()">✖️ Сбросить</button>
+            </div>
+
+            <div class="sort-controls">
+                <label>Сортировка:</label>
+                <select id="sort-field">
+                    <option value="name">По имени</option>
+                    <option value="employeesCount">По кол-ву сотрудников</option>
+                    <option value="annualTurnover">По обороту</option>
+                    <option value="creationDate">По дате создания</option>
+                </select>
+                <select id="sort-direction">
+                    <option value="asc">↑ По возрастанию</option>
+                    <option value="desc">↓ По убыванию</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Результаты</h2>
+            <div id="loading" class="loading hidden">Загрузка...</div>
+            <div id="organizations-table"></div>
+
+            <div class="pagination">
+                <button class="btn btn-secondary" onclick="previousPage()" id="prev-btn">← Предыдущая</button>
+                <span id="page-info">Страница 1 из 1</span>
+                <button class="btn btn-secondary" onclick="nextPage()" id="next-btn">Следующая →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка: Создать организацию -->
+    <div id="create-tab" class="tab-content">
+        <div class="card">
+            <h2>Создать новую организацию</h2>
+            <form id="create-form" onsubmit="createOrganization(event)">
+                <div class="form-group">
+                    <label>Название *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Координата X *</label>
+                        <input type="number" step="any" name="coordinatesX" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Координата Y * (макс. 402)</label>
+                        <input type="number" name="coordinatesY" max="402" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Полное название</label>
+                    <input type="text" name="fullName" maxlength="1347">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Количество сотрудников *</label>
+                        <input type="number" name="employeesCount" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Годовой оборот</label>
+                        <input type="number" step="any" name="annualTurnover" min="0.01">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Тип *</label>
+                    <select name="type" required>
+                        <option value="PUBLIC">PUBLIC</option>
+                        <option value="TRUST">TRUST</option>
+                        <option value="PRIVATE_LIMITED_COMPANY">PRIVATE LIMITED COMPANY</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Адрес (улица) *</label>
+                    <input type="text" name="street" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">✅ Создать организацию</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Вкладка: Управление -->
+    <div id="manage-tab" class="tab-content">
+        <div class="card">
+            <h2>🔀 Объединить организации</h2>
+            <form id="merge-form" onsubmit="mergeOrganizations(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID первой организации *</label>
+                        <input type="number" name="id1" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID второй организации *</label>
+                        <input type="number" name="id2" min="1" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Новое название *</label>
+                    <input type="text" name="newName" required>
+                </div>
+                <div class="form-group">
+                    <label>Новый адрес *</label>
+                    <input type="text" name="newAddress" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">🔀 Объединить</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>👤 Нанять сотрудника</h2>
+            <form id="hire-form" onsubmit="hireEmployee(event)">
+                <div class="form-group">
+                    <label>ID организации *</label>
+                    <input type="number" name="id" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large">👤 Нанять сотрудника</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>🗑️ Удалить организации</h2>
+            <form id="delete-form" onsubmit="deleteOrganization(event)">
+                <div class="form-group">
+                    <label>ID организации *</label>
+                    <input type="number" name="id" min="1" required>
+                </div>
+                <button type="submit" class="btn btn-danger btn-large">🗑️ Удалить по ID</button>
+            </form>
+
+            <form id="delete-fullname-form" onsubmit="deleteByFullName(event)" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label>Полное название</label>
+                    <input type="text" name="fullName" required>
+                </div>
+                <button type="submit" class="btn btn-danger btn-large">🗑️ Удалить по полному имени</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Вкладка: Статистика -->
+    <div id="stats-tab" class="tab-content">
+        <div class="card">
+            <h2>📊 Статистика организаций</h2>
+            <button class="btn btn-primary" onclick="loadStatistics()">🔄 Обновить статистику</button>
+            <div id="statistics-content" style="margin-top: 20px;">
+                <p class="text-muted">Нажмите "Обновить статистику" для загрузки данных</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
