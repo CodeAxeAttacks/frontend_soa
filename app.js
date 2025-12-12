@@ -1,7 +1,7 @@
 // Конфигурация API
 const API_CONFIG = {
-    service1: 'https://localhost:8081/api/v1/organizations',
-    service2: 'https://localhost:8082/orgmanager'
+    service1: 'https://localhost:18880/api/v1/organizations',
+    service2: 'https://localhost:18881'
 };
 
 // Состояние приложения
@@ -32,24 +32,28 @@ function showTab(tabName) {
 
 // Показать уведомление
 function showNotification(message, type = 'success') {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.className = `notification ${type}`;
+    try {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
 
-    setTimeout(() => {
-        notification.classList.add('hidden');
-    }, 5000);
+        setTimeout(() => {
+            notification.classList.add('hidden');
+        }, 5000);
+    } catch (e) {
+        // Подавляем ошибки уведомлений
+        console.warn('Notification error suppressed:', e);
+    }
 }
 
-// Показать/скрыть загрузку
+// Показать/скрыть загрузку (отключено для главной таблицы)
 function setLoading(loading) {
-    document.getElementById('loading').classList.toggle('hidden', !loading);
+    // Индикатор загрузки отключен
+    return;
 }
 
 // Загрузить список организаций
 async function loadOrganizations() {
-    setLoading(true);
-
     try {
         // Собрать параметры фильтрации
         const params = new URLSearchParams();
@@ -85,61 +89,67 @@ async function loadOrganizations() {
         updatePagination(data);
 
     } catch (error) {
-        showNotification(`Ошибка загрузки: ${error.message}`, 'error');
-        console.error(error);
-    } finally {
-        setLoading(false);
+        // Подавляем ошибки, показываем только минимальное уведомление
+        console.warn('Load organizations error:', error);
+        const container = document.getElementById('organizations-table');
+        if (container) {
+            container.innerHTML = '<p class="text-muted">Не удалось загрузить данные</p>';
+        }
     }
 }
 
 // Отобразить организации в таблице
 function displayOrganizations(data) {
-    const container = document.getElementById('organizations-table');
+    try {
+        const container = document.getElementById('organizations-table');
 
-    if (data.content.length === 0) {
-        container.innerHTML = '<p class="text-muted">Организации не найдены</p>';
-        return;
-    }
+        if (data.content.length === 0) {
+            container.innerHTML = '<p class="text-muted">Организации не найдены</p>';
+            return;
+        }
 
-    let html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Название</th>
-                    <th>Тип</th>
-                    <th>Сотрудники</th>
-                    <th>Оборот</th>
-                    <th>Адрес</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    data.content.forEach(org => {
-        html += `
-            <tr>
-                <td>${org.id}</td>
-                <td><strong>${org.name}</strong></td>
-                <td>${formatType(org.type)}</td>
-                <td>${org.employeesCount}</td>
-                <td>${formatMoney(org.annualTurnover)}</td>
-                <td>${org.officialAddress.street}</td>
-                <td class="actions">
-                    <button class="btn btn-small btn-primary" onclick="viewDetails(${org.id})">👁️ Детали</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteOrganization(event, ${org.id})">🗑️</button>
-                </td>
-            </tr>
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Сотрудники</th>
+                        <th>Оборот</th>
+                        <th>Адрес</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
-    });
 
-    html += `
-            </tbody>
-        </table>
-    `;
+        data.content.forEach(org => {
+            html += `
+                <tr>
+                    <td>${org.id}</td>
+                    <td><strong>${org.name}</strong></td>
+                    <td>${formatType(org.type)}</td>
+                    <td>${org.employeesCount}</td>
+                    <td>${formatMoney(org.annualTurnover)}</td>
+                    <td>${org.officialAddress.street}</td>
+                    <td class="actions">
+                        <button class="btn btn-small btn-primary" onclick="viewDetails(${org.id})">👁️ Детали</button>
+                        <button class="btn btn-small btn-danger" onclick="deleteOrganization(event, ${org.id})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
 
-    container.innerHTML = html;
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    } catch (e) {
+        console.warn('Display organizations error:', e);
+    }
 }
 
 // Просмотр деталей организации
@@ -194,20 +204,24 @@ async function viewDetails(id) {
         container.insertAdjacentHTML('afterbegin', html);
 
     } catch (error) {
-        showNotification(`Ошибка: ${error.message}`, 'error');
+        console.warn('View details error:', error);
     }
 }
 
 // Обновить пагинацию
 function updatePagination(data) {
-    currentPage = data.page;
-    totalPages = data.totalPages;
+    try {
+        currentPage = data.page;
+        totalPages = data.totalPages;
 
-    document.getElementById('page-info').textContent =
-        `Страница ${currentPage + 1} из ${totalPages} (всего: ${data.totalElements})`;
+        document.getElementById('page-info').textContent =
+            `Страница ${currentPage + 1} из ${totalPages} (всего: ${data.totalElements})`;
 
-    document.getElementById('prev-btn').disabled = currentPage === 0;
-    document.getElementById('next-btn').disabled = currentPage >= totalPages - 1;
+        document.getElementById('prev-btn').disabled = currentPage === 0;
+        document.getElementById('next-btn').disabled = currentPage >= totalPages - 1;
+    } catch (e) {
+        console.warn('Pagination error:', e);
+    }
 }
 
 // Следующая страница
@@ -228,12 +242,16 @@ function previousPage() {
 
 // Очистить фильтры
 function clearFilters() {
-    document.getElementById('filter-name').value = '';
-    document.getElementById('filter-type').value = '';
-    document.getElementById('filter-employees-min').value = '';
-    document.getElementById('filter-employees-max').value = '';
-    currentPage = 0;
-    loadOrganizations();
+    try {
+        document.getElementById('filter-name').value = '';
+        document.getElementById('filter-type').value = '';
+        document.getElementById('filter-employees-min').value = '';
+        document.getElementById('filter-employees-max').value = '';
+        currentPage = 0;
+        loadOrganizations();
+    } catch (e) {
+        console.warn('Clear filters error:', e);
+    }
 }
 
 // Создать организацию
@@ -299,7 +317,7 @@ async function mergeOrganizations(event) {
         );
 
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ message: 'Ошибка объединения' }));
             throw new Error(error.message || 'Ошибка объединения');
         }
 
@@ -309,6 +327,7 @@ async function mergeOrganizations(event) {
 
     } catch (error) {
         showNotification(`❌ Ошибка: ${error.message}`, 'error');
+        console.warn('Merge error:', error);
     }
 }
 
@@ -325,7 +344,7 @@ async function hireEmployee(event) {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ message: 'Ошибка найма' }));
             throw new Error(error.message || 'Ошибка найма');
         }
 
@@ -335,6 +354,7 @@ async function hireEmployee(event) {
 
     } catch (error) {
         showNotification(`❌ Ошибка: ${error.message}`, 'error');
+        console.warn('Hire error:', error);
     }
 }
 
@@ -361,7 +381,7 @@ async function deleteOrganization(event, id) {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ message: 'Ошибка удаления' }));
             throw new Error(error.message || 'Ошибка удаления');
         }
 
@@ -370,6 +390,7 @@ async function deleteOrganization(event, id) {
 
     } catch (error) {
         showNotification(`❌ Ошибка: ${error.message}`, 'error');
+        console.warn('Delete error:', error);
     }
 }
 
@@ -391,7 +412,7 @@ async function deleteByFullName(event) {
         );
 
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ message: 'Ошибка удаления' }));
             throw new Error(error.message || 'Ошибка удаления');
         }
 
@@ -402,6 +423,7 @@ async function deleteByFullName(event) {
 
     } catch (error) {
         showNotification(`❌ Ошибка: ${error.message}`, 'error');
+        console.warn('Delete by full name error:', error);
     }
 }
 
@@ -450,7 +472,11 @@ async function loadStatistics() {
         document.getElementById('statistics-content').innerHTML = html;
 
     } catch (error) {
-        showNotification(`Ошибка загрузки статистики: ${error.message}`, 'error');
+        console.warn('Statistics error:', error);
+        const container = document.getElementById('statistics-content');
+        if (container) {
+            container.innerHTML = '<p class="text-muted">Не удалось загрузить статистику</p>';
+        }
     }
 }
 
@@ -466,17 +492,29 @@ function formatType(type) {
 
 function formatMoney(amount) {
     if (!amount) return 'Не указано';
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB'
-    }).format(amount);
+    try {
+        return new Intl.NumberFormat('ru-RU', {
+            style: 'currency',
+            currency: 'RUB'
+        }).format(amount);
+    } catch (e) {
+        return amount + ' ₽';
+    }
 }
 
 function formatDate(dateString) {
-    return new Date(dateString).toLocaleString('ru-RU');
+    try {
+        return new Date(dateString).toLocaleString('ru-RU');
+    } catch (e) {
+        return dateString;
+    }
 }
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    loadOrganizations();
+    try {
+        loadOrganizations();
+    } catch (e) {
+        console.warn('Initialization error:', e);
+    }
 });
